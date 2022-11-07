@@ -2,7 +2,6 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { Contract, ContractReceipt } from "ethers";
 import { ethers } from "hardhat";
-import { erc20 } from "../typechain-types/@openzeppelin/contracts/token";
 
 describe("ProjectFundRaising", async function () {
   let projectFundRaising: Contract;
@@ -167,6 +166,35 @@ describe("ProjectFundRaising", async function () {
         deployerBalance.add(collectedAmount).sub(gasUsed)
       );
     });
+    it("Owner can withdraw funds from project when timestamp is greater than expires", async function () {
+      const backValue = ethers.utils.parseEther("5");
+      const secondBackValue = ethers.utils.parseEther("6");
+
+      const deployerBalance = await deployer.getBalance();
+
+      await projectFundRaising.connect(addr1).backProject({ value: backValue });
+
+      await projectFundRaising
+        .connect(addr2)
+        .backProject({ value: secondBackValue });
+
+      const nextBlocksTimestamp = expirationDate + 1000;
+      await ethers.provider.send("evm_mine", [nextBlocksTimestamp]);
+
+      const withdrawTx = await projectFundRaising.ownerWithdrawFunds();
+      const collectedAmount = await projectFundRaising.getCollectedAmount();
+
+      const receipt: ContractReceipt = await withdrawTx.wait();
+      const gasUsed = receipt.gasUsed.mul(receipt.effectiveGasPrice);
+
+      await expect(withdrawTx)
+        .to.be.emit(projectFundRaising, "fundsWithdrawedByOwner")
+        .withArgs(deployer.address, collectedAmount);
+
+      expect(await deployer.getBalance()).to.be.equal(
+        deployerBalance.add(collectedAmount).sub(gasUsed)
+      );
+    });
     it("Backer withdraw funds from project", async function () {
       const backValue = ethers.utils.parseEther("3");
 
@@ -295,8 +323,64 @@ describe("ProjectFundRaising", async function () {
   });
 
   describe("Failure cases", async function () {
-    it("Cannot deposit fund when project is finished", async function () {});
-    it("Owner cannot withdraw funds from project when funds not raised", async function () {});
+    it("Cannot deposit fund when project is finished", async function () {
+      const backValue = ethers.utils.parseEther("5");
+      const secondBackValue = ethers.utils.parseEther("6");
+
+      await projectFundRaising.connect(addr1).backProject({ value: backValue });
+
+      await projectFundRaising
+        .connect(addr2)
+        .backProject({ value: secondBackValue });
+
+      await expect(
+        projectFundRaising.connect(addr1).backProject({ value: backValue })
+      ).to.be.revertedWith("ProjectFundRaising: Project is already finished");
+    });
+    it("Cannot deposit fund when project is expired", async function () {
+      const backValue = ethers.utils.parseEther("5");
+
+      await projectFundRaising.connect(addr1).backProject({ value: backValue });
+
+      const nextBlocksTimestamp = expirationDate + 1000;
+      await ethers.provider.send("evm_mine", [nextBlocksTimestamp]);
+
+      await expect(
+        projectFundRaising.connect(addr1).backProject({ value: backValue })
+      ).to.be.revertedWith("ProjectFundRaising: Project already expired");
+    });
+    it("Owner cannot withdraw funds from project when project is not finished and not expired", async function () {
+      const backValue = ethers.utils.parseEther("5");
+
+      await projectFundRaising.connect(addr1).backProject({ value: backValue });
+
+      await expect(projectFundRaising.ownerWithdrawFunds()).to.be.revertedWith(
+        "ProjectFundRaising: Funds not raised"
+      );
+    });
+    it("Owner cannot withdraw funds from project when not raised 100%", async function () {
+      const backValue = ethers.utils.parseEther("5");
+
+      await projectFundRaising.connect(addr1).backProject({ value: backValue });
+
+      const nextBlocksTimestamp = expirationDate + 1000;
+      await ethers.provider.send("evm_mine", [nextBlocksTimestamp]);
+
+      await expect(projectFundRaising.ownerWithdrawFunds()).to.be.revertedWith(
+        "ProjectFundRaising: Funds not raised"
+      );
+    });
+    it("Owner cannot withdraw funds from project when already collected", async function () {
+      const backValue = ethers.utils.parseEther("11");
+
+      await projectFundRaising.connect(addr1).backProject({ value: backValue });
+
+      await projectFundRaising.ownerWithdrawFunds();
+
+      await expect(projectFundRaising.ownerWithdrawFunds()).to.be.revertedWith(
+        "ProjectFundRaising: Funds already withdrawed"
+      );
+    });
     it("Cannot withdraw funds from project when caller is not the owner", async function () {
       const backValue = ethers.utils.parseEther("5");
       const secondBackValue = ethers.utils.parseEther("6");
@@ -312,9 +396,55 @@ describe("ProjectFundRaising", async function () {
       ).to.be.revertedWith("Ownable: caller is not the owner");
     });
 
-    it("Backer cannot withdraw funds from project when it is not expired", async function () {});
-    it("Backer cannot withdraw funds from project when funds are collected", async function () {});
-    it("User cannot withdraw funds when caller is not a backer", async function () {});
+    it("Backer cannot withdraw funds from project when it is not expired", async function () {
+      const backValue = ethers.utils.parseEther("5");
+
+      await projectFundRaising.connect(addr1).backProject({ value: backValue });
+
+      await expect(
+        projectFundRaising.connect(addr1).backerWithdrawFunds()
+      ).to.be.revertedWith("ProjectFundRaising: Project not expired yet");
+    });
+    it("Backer cannot withdraw funds when funds are 100% raised", async function () {
+      const backValue = ethers.utils.parseEther("5");
+      const secondBackValue = ethers.utils.parseEther("6");
+
+      await projectFundRaising.connect(addr1).backProject({ value: backValue });
+
+      await projectFundRaising
+        .connect(addr2)
+        .backProject({ value: secondBackValue });
+
+      const nextBlocksTimestamp = expirationDate + 1000;
+      await ethers.provider.send("evm_mine", [nextBlocksTimestamp]);
+
+      await expect(
+        projectFundRaising.connect(addr1).backerWithdrawFunds()
+      ).to.be.revertedWith("ProjectFundRaising: Funds raised");
+    });
+
+    it("Backer cannot withdraw funds when did not allow erc20 for contract", async function () {
+      const backValue = ethers.utils.parseEther("5");
+
+      await projectFundRaising.connect(addr1).backProject({ value: backValue });
+
+      const nextBlocksTimestamp = expirationDate + 1000;
+      await ethers.provider.send("evm_mine", [nextBlocksTimestamp]);
+
+      await expect(
+        projectFundRaising.connect(addr1).backerWithdrawFunds()
+      ).to.be.revertedWith("ERC20: insufficient allowance");
+    });
+
+    it("User cannot withdraw funds when caller is not a backer", async function () {
+      const backValue = ethers.utils.parseEther("5");
+
+      await projectFundRaising.connect(addr1).backProject({ value: backValue });
+
+      await expect(
+        projectFundRaising.connect(addr2).backerWithdrawFunds()
+      ).to.be.revertedWith("ProjectFundRaising: User did not back project");
+    });
   });
 });
 

@@ -26,8 +26,9 @@ contract ProjectFundRaising is IProjectFundRaising, Ownable {
     address internal projectOwner;
     uint256 internal expires;
     uint256 internal backAmount;
-    uint256 internal collected;
+    uint256 internal collectedAmount;
     bool internal finished;
+    bool public withdrawedByOwner;
 
     //Propably Useless
     modifier isProjectOwner(address sender) {
@@ -62,7 +63,7 @@ contract ProjectFundRaising is IProjectFundRaising, Ownable {
 
     function _fundsRaised() internal view {
         require(
-            collected >= backAmount,
+            collectedAmount >= backAmount,
             "ProjectFundRaising: Funds not raised"
         );
         require(
@@ -77,7 +78,10 @@ contract ProjectFundRaising is IProjectFundRaising, Ownable {
     }
 
     function _fundsNotRaised() internal view {
-        require(backAmount >= collected, "ProjectFundRaising: Funds raised");
+        require(
+            backAmount >= collectedAmount,
+            "ProjectFundRaising: Funds raised"
+        );
     }
 
     modifier projectExpired() {
@@ -104,6 +108,18 @@ contract ProjectFundRaising is IProjectFundRaising, Ownable {
         );
     }
 
+    modifier notWithdrawed() {
+        _notWithdrawed();
+        _;
+    }
+
+    function _notWithdrawed() internal view {
+        require(
+            !withdrawedByOwner,
+            "ProjectFundRaising: Funds already withdrawed"
+        );
+    }
+
     constructor(
         uint256 _id,
         string memory _title,
@@ -119,20 +135,24 @@ contract ProjectFundRaising is IProjectFundRaising, Ownable {
         expires = _expires;
         backAmount = _backAmount;
         finished = false;
+        withdrawedByOwner = false;
 
         //ERC20 Deploy
-        erc20token = new ERC20Token(
-            tokenName,
-            tokenSymbol,
-            _backAmount,
-            address(this)
-        );
+        erc20token = new ERC20Token(tokenName, tokenSymbol);
+
+        //OLD ERC20 DEPLOY
+        //     erc20token = new ERC20Token(
+        //     tokenName,
+        //     tokenSymbol,
+        //     _backAmount,
+        //     address(this)
+        // );
 
         emit ProjectCreated(id, _title, backAmount, expires);
     }
 
     function backProject() external payable projectNotFinished {
-        collected += msg.value;
+        collectedAmount += msg.value;
         uint256 backValue = 0;
 
         (bool alreadyBacked, uint256 backedAmountBySender) = backers.tryGet(
@@ -148,13 +168,12 @@ contract ProjectFundRaising is IProjectFundRaising, Ownable {
         backersMap[msg.sender] = backValue;
         backers.set(msg.sender, backValue);
 
-        if (collected >= backAmount) {
+        if (collectedAmount >= backAmount) {
             finished = true;
         }
 
         //Transfer tokens to backer
         erc20token.mint(msg.sender, msg.value);
-        // payable(address(this)).transfer(msg.value);
 
         emit ProjectBacked(msg.sender, msg.value);
     }
@@ -166,12 +185,14 @@ contract ProjectFundRaising is IProjectFundRaising, Ownable {
         override
         fundsRaised
         onlyOwner
+        notWithdrawed
     {
         finished = true;
+        withdrawedByOwner = true;
         //TODO: CALCULATE FEE WHILE WITHDRAW - IDEA
-        payable(projectOwner).transfer(collected);
+        payable(projectOwner).transfer(collectedAmount);
 
-        emit fundsWithdrawedByOwner(projectOwner, collected);
+        emit fundsWithdrawedByOwner(projectOwner, collectedAmount);
     }
 
     function backerWithdrawFunds()
@@ -185,7 +206,7 @@ contract ProjectFundRaising is IProjectFundRaising, Ownable {
         address backer = msg.sender;
         uint256 withdrawFund = backersMap[backer];
 
-        collected -= withdrawFund;
+        collectedAmount -= withdrawFund;
         backersMap[backer] = 0;
         backers.set(backer, 0);
 
@@ -209,7 +230,7 @@ contract ProjectFundRaising is IProjectFundRaising, Ownable {
     }
 
     function getCollectedAmount() external view returns (uint256) {
-        return collected;
+        return collectedAmount;
     }
 
     function getAmountToColect() external view returns (uint256) {

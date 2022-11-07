@@ -8,11 +8,13 @@ import "./interfaces/IFundRaisingFactory.sol";
 import "./ProjectFundRaising.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 
+import "hardhat/console.sol";
+
 contract FundRaisingFactory is IFundRaisingFactory, Ownable {
     using Counters for Counters.Counter;
 
     uint256 internal feeSetting;
-    address defaultOwner;
+    address internal defaultOwner;
 
     mapping(uint256 => ProjectFundRaising) public projectsCreated;
     Counters.Counter private _tokenIdTracker;
@@ -20,6 +22,8 @@ contract FundRaisingFactory is IFundRaisingFactory, Ownable {
     constructor(uint256 _fee) {
         feeSetting = _fee;
         defaultOwner = msg.sender;
+
+        _tokenIdTracker.increment();
     }
 
     function changeFee(uint256 newFee) external onlyOwner {
@@ -33,6 +37,8 @@ contract FundRaisingFactory is IFundRaisingFactory, Ownable {
         address currentOwner = defaultOwner;
         defaultOwner = newOwner;
 
+        transferOwnership(newOwner);
+
         emit OwnerChanged(currentOwner, defaultOwner);
     }
 
@@ -43,33 +49,61 @@ contract FundRaisingFactory is IFundRaisingFactory, Ownable {
         string memory tokenName,
         string memory tokenSymbol
     ) external payable override {
+        uint256 projectId = _tokenIdTracker.current();
         ProjectFundRaising newProject = new ProjectFundRaising(
-            _tokenIdTracker.current(),
+            projectId,
             _title,
             _backAmount,
             _expires,
             tokenName,
             tokenSymbol
         );
-
         //Take fee
         uint256 fee = (_backAmount * feeSetting) / 100;
-        payable(defaultOwner).transfer(fee);
+        require(
+            msg.value >= fee,
+            "FundRaisingFactory: Message value is lower than fee"
+        );
+        payable(defaultOwner).transfer(msg.value);
 
-        projectsCreated[_tokenIdTracker.current()] = newProject;
+        projectsCreated[projectId] = newProject;
         _tokenIdTracker.increment();
-        emit ProjectCreated(_title, _expires, _backAmount);
+
+        emit ProjectCreated(
+            projectId,
+            address(newProject),
+            _title,
+            _expires,
+            _backAmount
+        );
     }
 
     function isProjectExists(uint256 projectId)
         external
+        view
         override
         returns (bool)
     {
-        if (address(projectsCreated[_tokenIdTracker.current()]) != address(0)) {
+        if (address(projectsCreated[projectId]) != address(0)) {
             return true;
         } else {
             return false;
         }
+    }
+
+    function getCurrentFee() external view returns (uint256) {
+        return feeSetting;
+    }
+
+    function getCurrentOwner() external view returns (address) {
+        return defaultOwner;
+    }
+
+    function getProjectWithId(uint256 projectId)
+        external
+        view
+        returns (ProjectFundRaising)
+    {
+        return projectsCreated[projectId];
     }
 }

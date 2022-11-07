@@ -5,7 +5,13 @@ pragma solidity ^0.8.0;
 interface IFundRaisingFactory {
     event FeeChanged(uint256 oldFee, uint256 newFee);
     event OwnerChanged(address oldOwner, address newOwner);
-    event ProjectCreated(string _title, uint256 expires, uint256 amountToBack);
+    event ProjectCreated(
+        uint256 id,
+        address projectAddress,
+        string _title,
+        uint256 expires,
+        uint256 amountToBack
+    );
 
     function createProject(
         string memory _title,
