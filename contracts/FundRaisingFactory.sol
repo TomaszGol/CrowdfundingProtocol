@@ -6,12 +6,14 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "./interfaces/IFundRaisingFactory.sol";
 import "./ProjectFundRaising.sol";
+import "./ContractControlList.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 
-import "hardhat/console.sol";
-
-contract FundRaisingFactory is IFundRaisingFactory, Ownable {
+contract FundRaisingFactory is IFundRaisingFactory, Pausable, Ownable {
     using Counters for Counters.Counter;
+
+    ContractControlList internal ccl;
 
     uint256 internal feeSetting;
     address internal defaultOwner;
@@ -19,21 +21,43 @@ contract FundRaisingFactory is IFundRaisingFactory, Ownable {
     mapping(uint256 => ProjectFundRaising) public projectsCreated;
     Counters.Counter private _tokenIdTracker;
 
-    constructor(uint256 _fee) {
+    constructor(ContractControlList _ccl, uint256 _fee) {
+        ccl = _ccl;
         feeSetting = _fee;
         defaultOwner = msg.sender;
 
         _tokenIdTracker.increment();
     }
 
-    function changeFee(uint256 newFee) external onlyOwner {
+    // modifier onlyAdminRole(address addr) {
+    //     require(
+    //         ccl.hasFundRaisingAdminRole(addr),
+    //         "FundRaisingFactory: Caller is not the owner"
+    //     );
+    //     _;
+    // }
+
+    // modifier onlyAdminOrModeratorRole(address addr) {
+    //     require(
+    //         ccl.hasFundRaisingAdminRole(addr) ||
+    //             ccl.hasFundRaisingModeratorRole(addr),
+    //         "FundRaisingFactory: Caller is not the owner nor moderator"
+    //     );
+    //     _;
+    // }
+
+    function changeFee(uint256 newFee) external onlyOwner whenNotPaused {
         uint256 currentFee = feeSetting;
         feeSetting = newFee;
 
         emit FeeChanged(currentFee, feeSetting);
     }
 
-    function changeOwner(address newOwner) external onlyOwner {
+    function changeOwner(address newOwner) external onlyOwner whenNotPaused {
+        require(
+            newOwner != address(0),
+            "FundRaisingFactory: Cannot transfer ownership to addres 0"
+        );
         address currentOwner = defaultOwner;
         defaultOwner = newOwner;
 
@@ -43,20 +67,24 @@ contract FundRaisingFactory is IFundRaisingFactory, Ownable {
     }
 
     function createProject(
-        string memory _title,
+        string calldata _title,
         uint256 _backAmount,
         uint256 _expires,
-        string memory tokenName,
-        string memory tokenSymbol
-    ) external payable override {
+        string calldata _tokenName,
+        string calldata _tokenSymbol
+    ) external payable override whenNotPaused {
+        require(
+            _expires <= block.timestamp + 2629743,
+            "FundRaisingFactory: Expiration date cannot be longer than a one month"
+        );
         uint256 projectId = _tokenIdTracker.current();
         ProjectFundRaising newProject = new ProjectFundRaising(
             projectId,
             _title,
             _backAmount,
             _expires,
-            tokenName,
-            tokenSymbol
+            _tokenName,
+            _tokenSymbol
         );
         //Take fee
         uint256 fee = (_backAmount * feeSetting) / 100;
@@ -105,5 +133,9 @@ contract FundRaisingFactory is IFundRaisingFactory, Ownable {
         returns (ProjectFundRaising)
     {
         return projectsCreated[projectId];
+    }
+
+    function setPaused(bool _value) external onlyOwner {
+        _value ? _pause() : _unpause();
     }
 }

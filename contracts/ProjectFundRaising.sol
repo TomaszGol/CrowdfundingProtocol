@@ -9,9 +9,6 @@ import "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
 import "./interfaces/IProjectFundRaising.sol";
 import "./ERC20Token.sol";
 
-import "hardhat/console.sol";
-
-//TODO: ADD ROLES: owner of project and admin(can finish project)
 contract ProjectFundRaising is IProjectFundRaising, Ownable {
     using EnumerableMap for EnumerableMap.AddressToUintMap;
 
@@ -19,10 +16,8 @@ contract ProjectFundRaising is IProjectFundRaising, Ownable {
 
     ERC20Token internal erc20token;
 
-    mapping(address => uint256) internal backersMap;
-
     uint256 internal id;
-    bytes internal title;
+    bytes internal hashedTitle;
     address internal projectOwner;
     uint256 internal expires;
     uint256 internal backAmount;
@@ -128,10 +123,10 @@ contract ProjectFundRaising is IProjectFundRaising, Ownable {
         string memory tokenName,
         string memory tokenSymbol
     ) {
-        bytes memory hashedTitle = abi.encode(_title);
+        bytes memory _hashedTitle = abi.encode(_title);
         projectOwner = msg.sender;
         id = _id;
-        title = hashedTitle;
+        hashedTitle = _hashedTitle;
         expires = _expires;
         backAmount = _backAmount;
         finished = false;
@@ -139,14 +134,6 @@ contract ProjectFundRaising is IProjectFundRaising, Ownable {
 
         //ERC20 Deploy
         erc20token = new ERC20Token(tokenName, tokenSymbol);
-
-        //OLD ERC20 DEPLOY
-        //     erc20token = new ERC20Token(
-        //     tokenName,
-        //     tokenSymbol,
-        //     _backAmount,
-        //     address(this)
-        // );
 
         emit ProjectCreated(id, _title, backAmount, expires);
     }
@@ -165,7 +152,6 @@ contract ProjectFundRaising is IProjectFundRaising, Ownable {
             backValue = msg.value;
         }
 
-        backersMap[msg.sender] = backValue;
         backers.set(msg.sender, backValue);
 
         if (collectedAmount >= backAmount) {
@@ -187,12 +173,11 @@ contract ProjectFundRaising is IProjectFundRaising, Ownable {
         onlyOwner
         notWithdrawed
     {
-        finished = true;
         withdrawedByOwner = true;
         //TODO: CALCULATE FEE WHILE WITHDRAW - IDEA
         payable(projectOwner).transfer(collectedAmount);
 
-        emit fundsWithdrawedByOwner(projectOwner, collectedAmount);
+        emit FundsWithdrawedByOwner(projectOwner, collectedAmount);
     }
 
     function backerWithdrawFunds()
@@ -204,21 +189,20 @@ contract ProjectFundRaising is IProjectFundRaising, Ownable {
         fundsNotRaised
     {
         address backer = msg.sender;
-        uint256 withdrawFund = backersMap[backer];
+        (bool findBacker, uint256 withdrawFund) = backers.tryGet(backer);
 
         collectedAmount -= withdrawFund;
-        backersMap[backer] = 0;
         backers.set(backer, 0);
 
         //Burn tokens from backers
         erc20token.burnFrom(backer, withdrawFund);
         payable(backer).transfer(withdrawFund);
 
-        emit fundsWithdrawedByBacker(backer, withdrawFund);
+        emit FundsWithdrawedByBacker(backer, withdrawFund);
     }
 
     function getTitle() external view returns (string memory) {
-        return abi.decode(title, (string));
+        return abi.decode(hashedTitle, (string));
     }
 
     function getExpiration() external view returns (uint256) {
@@ -245,3 +229,12 @@ contract ProjectFundRaising is IProjectFundRaising, Ownable {
         return address(erc20token);
     }
 }
+
+//TODO:
+//IDEA:
+//Make role system admin, user, moderator for this contract and factory
+//Here we have storage veryfied and 2 function to cancel and veriify by admin and moderator
+//admin grant moderator role
+//moderator verify and cancel project
+//user functionalities as they are
+//Problem: front end admin panel? - don't know how to verify from front

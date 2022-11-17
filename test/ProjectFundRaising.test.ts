@@ -159,7 +159,7 @@ describe("ProjectFundRaising", async function () {
       const gasUsed = receipt.gasUsed.mul(receipt.effectiveGasPrice);
 
       await expect(withdrawTx)
-        .to.be.emit(projectFundRaising, "fundsWithdrawedByOwner")
+        .to.be.emit(projectFundRaising, "FundsWithdrawedByOwner")
         .withArgs(deployer.address, collectedAmount);
 
       expect(await deployer.getBalance()).to.be.equal(
@@ -188,7 +188,7 @@ describe("ProjectFundRaising", async function () {
       const gasUsed = receipt.gasUsed.mul(receipt.effectiveGasPrice);
 
       await expect(withdrawTx)
-        .to.be.emit(projectFundRaising, "fundsWithdrawedByOwner")
+        .to.be.emit(projectFundRaising, "FundsWithdrawedByOwner")
         .withArgs(deployer.address, collectedAmount);
 
       expect(await deployer.getBalance()).to.be.equal(
@@ -215,7 +215,7 @@ describe("ProjectFundRaising", async function () {
       );
 
       await expect(tx)
-        .to.be.emit(projectFundRaising, "fundsWithdrawedByBacker")
+        .to.be.emit(projectFundRaising, "FundsWithdrawedByBacker")
         .withArgs(addr1.address, backValue);
 
       await expect(tx)
@@ -262,7 +262,7 @@ describe("ProjectFundRaising", async function () {
       );
 
       await expect(tx)
-        .to.be.emit(projectFundRaising, "fundsWithdrawedByBacker")
+        .to.be.emit(projectFundRaising, "FundsWithdrawedByBacker")
         .withArgs(addr1.address, backValue);
 
       await expect(tx)

@@ -6,19 +6,19 @@ interface IFundRaisingFactory {
     event FeeChanged(uint256 oldFee, uint256 newFee);
     event OwnerChanged(address oldOwner, address newOwner);
     event ProjectCreated(
-        uint256 id,
-        address projectAddress,
-        string _title,
+        uint256 indexed id,
+        address indexed projectAddress,
+        string title,
         uint256 expires,
         uint256 amountToBack
     );
 
     function createProject(
-        string memory _title,
+        string calldata _title,
         uint256 _backAmount,
         uint256 _expires,
-        string memory tokenName,
-        string memory tokenSymbol
+        string calldata tokenName,
+        string calldata tokenSymbol
     ) external payable;
 
     function isProjectExists(uint256 projectId) external returns (bool);

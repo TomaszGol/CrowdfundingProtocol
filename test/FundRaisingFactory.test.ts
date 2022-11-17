@@ -201,6 +201,20 @@ describe("FundRaisingFactory", async function () {
         projectAddress
       );
     });
+    // setPaused
+    it("Should pause a contract", async function () {
+      const tx = await fundRaisingFactory.setPaused(true);
+      await expect(tx)
+        .to.be.emit(fundRaisingFactory, "Paused")
+        .withArgs(deployer.address);
+    });
+    it("Should unpause a paused contract", async function () {
+      await fundRaisingFactory.setPaused(true);
+      const tx = await fundRaisingFactory.setPaused(false);
+      await expect(tx)
+        .to.be.emit(fundRaisingFactory, "Unpaused")
+        .withArgs(deployer.address);
+    });
     describe("Getters", async function () {
       it("Get fee", async function () {
         expect(await fundRaisingFactory.getCurrentFee()).to.be.equal(
@@ -216,6 +230,14 @@ describe("FundRaisingFactory", async function () {
   });
 
   describe("Failure cases", async function () {
+    it("Cannot change fee when contract is paused", async function () {
+      await fundRaisingFactory.setPaused(true);
+      const newFee = 3;
+
+      await expect(fundRaisingFactory.changeFee(newFee)).to.be.revertedWith(
+        "Pausable: paused"
+      );
+    });
     it("Cannot change fee when caller is not the owner", async function () {
       const newFee = 3;
 
@@ -223,12 +245,58 @@ describe("FundRaisingFactory", async function () {
         fundRaisingFactory.connect(addr1).changeFee(newFee)
       ).to.be.revertedWith("Ownable: caller is not the owner");
     });
+    it("Cannot change owner when contract is paused", async function () {
+      await fundRaisingFactory.setPaused(true);
+      await expect(
+        fundRaisingFactory.changeOwner(addr1.address)
+      ).to.be.revertedWith("Pausable: paused");
+    });
     it("Cannot change owner when caller is not the owner", async function () {
       await expect(
         fundRaisingFactory.connect(addr1).changeOwner(addr1.address)
       ).to.be.revertedWith("Ownable: caller is not the owner");
     });
     //createProject
+    it("Cannot create new project when contract is paused", async function () {
+      await fundRaisingFactory.setPaused(true);
+
+      const blockNumber = ethers.provider.getBlockNumber();
+      const expirationDate =
+        (await ethers.provider.getBlock(blockNumber)).timestamp + 1000;
+
+      await expect(
+        fundRaisingFactory.createProject(
+          title,
+          backAmount,
+          expirationDate,
+          tokenName,
+          tokenSymbol,
+          { value: ethers.utils.parseEther("0.2") }
+        )
+      ).to.be.revertedWith("Pausable: paused");
+    });
+    it("Cannot create new project when expiration date is longer than month from now", async function () {
+      const monthFromNow = 2629743;
+
+      const blockNumber = ethers.provider.getBlockNumber();
+      const expirationDate =
+        (await ethers.provider.getBlock(blockNumber)).timestamp +
+        monthFromNow +
+        1000;
+
+      await expect(
+        fundRaisingFactory.createProject(
+          title,
+          backAmount,
+          expirationDate,
+          tokenName,
+          tokenSymbol,
+          { value: ethers.utils.parseEther("0.2") }
+        )
+      ).to.be.revertedWith(
+        "FundRaisingFactory: Expiration date cannot be longer than a one month"
+      );
+    });
     it("Cannot create new project when message value not match fee", async function () {
       const blockNumber = ethers.provider.getBlockNumber();
       const expirationDate =
@@ -246,6 +314,12 @@ describe("FundRaisingFactory", async function () {
       ).to.be.revertedWith(
         "FundRaisingFactory: Message value is lower than fee"
       );
+    });
+    // setPaused
+    it("Cannot pause a contract, when caller is not owner nor admin", async function () {
+      await expect(
+        fundRaisingFactory.connect(addr2).setPaused(true)
+      ).to.be.revertedWith("Ownable: caller is not the owner");
     });
   });
 });
