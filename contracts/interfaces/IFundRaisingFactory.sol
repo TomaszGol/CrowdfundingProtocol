@@ -21,5 +21,7 @@ interface IFundRaisingFactory {
         string calldata tokenSymbol
     ) external payable;
 
-    function isProjectExists(uint256 projectId) external returns (bool);
+    function cancelProject(uint256 projectId) external;
+
+    function verifyProject(uint256 projectId) external;
 }

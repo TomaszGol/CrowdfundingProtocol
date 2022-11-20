@@ -2,14 +2,13 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
 
 import "./interfaces/IProjectFundRaising.sol";
 import "./ERC20Token.sol";
 
-contract ProjectFundRaising is IProjectFundRaising, Ownable {
+contract ProjectFundRaising is IProjectFundRaising {
     using EnumerableMap for EnumerableMap.AddressToUintMap;
 
     EnumerableMap.AddressToUintMap internal backers;
@@ -19,11 +18,39 @@ contract ProjectFundRaising is IProjectFundRaising, Ownable {
     uint256 internal id;
     bytes internal hashedTitle;
     address internal projectOwner;
+    address internal factoryAddress;
     uint256 internal expires;
     uint256 internal backAmount;
     uint256 internal collectedAmount;
     bool internal finished;
     bool public withdrawedByOwner;
+    projectStatus public status;
+
+    constructor(
+        address _owner,
+        uint256 _id,
+        string memory _title,
+        uint256 _backAmount,
+        uint256 _expires,
+        string memory tokenName,
+        string memory tokenSymbol
+    ) {
+        bytes memory _hashedTitle = abi.encode(_title);
+        projectOwner = _owner;
+        id = _id;
+        hashedTitle = _hashedTitle;
+        expires = _expires;
+        backAmount = _backAmount;
+        finished = false;
+        withdrawedByOwner = false;
+        factoryAddress = msg.sender;
+        status = projectStatus.UNDEFINED;
+
+        //ERC20 Deploy
+        erc20token = new ERC20Token(tokenName, tokenSymbol);
+
+        emit ProjectCreated(id, _title, backAmount, expires);
+    }
 
     //Propably Useless
     modifier isProjectOwner(address sender) {
@@ -115,30 +142,36 @@ contract ProjectFundRaising is IProjectFundRaising, Ownable {
         );
     }
 
-    constructor(
-        uint256 _id,
-        string memory _title,
-        uint256 _backAmount,
-        uint256 _expires,
-        string memory tokenName,
-        string memory tokenSymbol
-    ) {
-        bytes memory _hashedTitle = abi.encode(_title);
-        projectOwner = msg.sender;
-        id = _id;
-        hashedTitle = _hashedTitle;
-        expires = _expires;
-        backAmount = _backAmount;
-        finished = false;
-        withdrawedByOwner = false;
-
-        //ERC20 Deploy
-        erc20token = new ERC20Token(tokenName, tokenSymbol);
-
-        emit ProjectCreated(id, _title, backAmount, expires);
+    modifier onlyFromFactory(address caller) {
+        _onlyFromFactory(caller);
+        _;
     }
 
-    function backProject() external payable projectNotFinished {
+    function _onlyFromFactory(address caller) internal view {
+        require(
+            caller == factoryAddress,
+            "ProjectFundRaising: Function called from not factory it was created"
+        );
+    }
+
+    modifier projectNotCanceled() {
+        _projectNotCanceled();
+        _;
+    }
+
+    function _projectNotCanceled() internal view {
+        require(
+            status != projectStatus.CANCELED,
+            "ProjectFundRaising: Project is cancelled"
+        );
+    }
+
+    function backProject()
+        external
+        payable
+        projectNotCanceled
+        projectNotFinished
+    {
         collectedAmount += msg.value;
         uint256 backValue = 0;
 
@@ -169,12 +202,13 @@ contract ProjectFundRaising is IProjectFundRaising, Ownable {
         external
         payable
         override
+        projectNotCanceled
         fundsRaised
-        onlyOwner
+        isProjectOwner(msg.sender)
         notWithdrawed
     {
         withdrawedByOwner = true;
-        //TODO: CALCULATE FEE WHILE WITHDRAW - IDEA
+
         payable(projectOwner).transfer(collectedAmount);
 
         emit FundsWithdrawedByOwner(projectOwner, collectedAmount);
@@ -199,6 +233,29 @@ contract ProjectFundRaising is IProjectFundRaising, Ownable {
         payable(backer).transfer(withdrawFund);
 
         emit FundsWithdrawedByBacker(backer, withdrawFund);
+    }
+
+    function cancelProject() external onlyFromFactory(msg.sender) {
+        _cancelProject();
+    }
+
+    function _cancelProject() internal {
+        status = projectStatus.CANCELED;
+        finished = true;
+        emit ProjectCanceled(id);
+    }
+
+    function verifyProject() external onlyFromFactory(msg.sender) {
+        _verifyProject();
+    }
+
+    function _verifyProject() internal {
+        status = projectStatus.VERYFIED;
+        emit ProjectVeryfied(id);
+    }
+
+    function getId() external view returns (uint256) {
+        return id;
     }
 
     function getTitle() external view returns (string memory) {
@@ -229,12 +286,3 @@ contract ProjectFundRaising is IProjectFundRaising, Ownable {
         return address(erc20token);
     }
 }
-
-//TODO:
-//IDEA:
-//Make role system admin, user, moderator for this contract and factory
-//Here we have storage veryfied and 2 function to cancel and veriify by admin and moderator
-//admin grant moderator role
-//moderator verify and cancel project
-//user functionalities as they are
-//Problem: front end admin panel? - don't know how to verify from front

@@ -12,6 +12,14 @@ interface IProjectFundRaising {
     event ProjectBacked(address indexed backers, uint256 backValue);
     event FundsWithdrawedByOwner(address owner, uint256 withdrawedAmount);
     event FundsWithdrawedByBacker(address backer, uint256 withdrawedAmount);
+    event ProjectVeryfied(uint256 id);
+    event ProjectCanceled(uint256 id);
+
+    enum projectStatus {
+        UNDEFINED,
+        VERYFIED,
+        CANCELED
+    }
 
     function backProject() external payable;
 

@@ -28,6 +28,7 @@ describe("ProjectFundRaising", async function () {
       (await ethers.provider.getBlock(blockNumber)).timestamp + 1000;
 
     projectFundRaising = await ProjectFundRaisingFactory.deploy(
+      deployer.address,
       projectID,
       title,
       backAmount,
@@ -281,7 +282,23 @@ describe("ProjectFundRaising", async function () {
 
       expect(contractBalance).to.be.equal(0);
     });
+    it("Should set project status to verify", async function () {
+      const tx = await projectFundRaising.verifyProject();
+      expect(tx)
+        .to.be.emit(projectFundRaising, "ProjectVeryfied")
+        .withArgs(projectID);
+    });
+    it("Should set project status to canceled", async function () {
+      const tx = await projectFundRaising.cancelProject();
+      expect(tx)
+        .to.be.emit(projectFundRaising, "ProjectCanceled")
+        .withArgs(projectID);
+    });
+
     describe("Getters", async function () {
+      it("Get id of project", async function () {
+        expect(await projectFundRaising.getId()).to.be.equal(projectID);
+      });
       it("Get title of project", async function () {
         expect(await projectFundRaising.getTitle()).to.be.equal(title);
       });
@@ -337,6 +354,17 @@ describe("ProjectFundRaising", async function () {
         projectFundRaising.connect(addr1).backProject({ value: backValue })
       ).to.be.revertedWith("ProjectFundRaising: Project is already finished");
     });
+    it("Cannot back project when it is cancelled by administrator", async function () {
+      const backValue = ethers.utils.parseEther("5");
+
+      await projectFundRaising.connect(addr1).backProject({ value: backValue });
+
+      await projectFundRaising.cancelProject();
+
+      await expect(
+        projectFundRaising.connect(addr1).backProject({ value: backValue })
+      ).to.be.revertedWith("ProjectFundRaising: Project is cancelled");
+    });
     it("Cannot deposit fund when project is expired", async function () {
       const backValue = ethers.utils.parseEther("5");
 
@@ -356,6 +384,17 @@ describe("ProjectFundRaising", async function () {
 
       await expect(projectFundRaising.ownerWithdrawFunds()).to.be.revertedWith(
         "ProjectFundRaising: Funds not raised"
+      );
+    });
+    it("Owner cannot withdraw funds from project when project is not cancelled by admin or moderator", async function () {
+      const backValue = ethers.utils.parseEther("5");
+
+      await projectFundRaising.connect(addr1).backProject({ value: backValue });
+
+      await projectFundRaising.cancelProject();
+
+      await expect(projectFundRaising.ownerWithdrawFunds()).to.be.revertedWith(
+        "ProjectFundRaising: Project is cancelled"
       );
     });
     it("Owner cannot withdraw funds from project when not raised 100%", async function () {
@@ -393,7 +432,7 @@ describe("ProjectFundRaising", async function () {
 
       await expect(
         projectFundRaising.connect(addr1).ownerWithdrawFunds()
-      ).to.be.revertedWith("Ownable: caller is not the owner");
+      ).to.be.revertedWith("ProjectFundRaising: Caller is not the owner");
     });
 
     it("Backer cannot withdraw funds from project when it is not expired", async function () {
@@ -445,14 +484,21 @@ describe("ProjectFundRaising", async function () {
         projectFundRaising.connect(addr2).backerWithdrawFunds()
       ).to.be.revertedWith("ProjectFundRaising: User did not back project");
     });
+    it("Cannot set project status to verify, when caller is not a address of factory passed while deploying", async function () {
+      await expect(
+        projectFundRaising.connect(addr1).verifyProject()
+      ).to.be.revertedWith(
+        "ProjectFundRaising: Function called from not factory it was created"
+      );
+    });
+    it("Cannot set project status to cancel, when caller is not a address of factory passed while deploying", async function () {
+      await expect(
+        projectFundRaising.connect(addr1).cancelProject()
+      ).to.be.revertedWith(
+        "ProjectFundRaising: Function called from not factory it was created"
+      );
+    });
   });
+
+  //TODO: test function projectNotCanceled
 });
-
-//GET EXPIRATION
-// const blockNumber = ethers.provider.getBlockNumber();
-// let expirationDate =
-//   (await ethers.provider.getBlock(blockNumber)).timestamp + 1000;
-
-//TOKEN MINE
-// const nextBlocksTimestamp = expirationDate + 1000;
-//       await ethers.provider.send("evm_mine", [nextBlocksTimestamp]);
