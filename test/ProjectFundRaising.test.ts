@@ -38,7 +38,7 @@ describe("ProjectFundRaising", async function () {
     );
     await projectFundRaising.deployed();
 
-    const deployedErc20Address = await projectFundRaising.getERC20Address();
+    const deployedErc20Address = await projectFundRaising.erc20token();
     const ERC20Factory = await ethers.getContractFactory("ERC20Token");
     erc20 = await ERC20Factory.attach(deployedErc20Address);
   });
@@ -154,7 +154,7 @@ describe("ProjectFundRaising", async function () {
         .backProject({ value: secondBackValue });
 
       const withdrawTx = await projectFundRaising.ownerWithdrawFunds();
-      const collectedAmount = await projectFundRaising.getCollectedAmount();
+      const collectedAmount = await projectFundRaising.collectedAmount();
 
       const receipt: ContractReceipt = await withdrawTx.wait();
       const gasUsed = receipt.gasUsed.mul(receipt.effectiveGasPrice);
@@ -183,7 +183,7 @@ describe("ProjectFundRaising", async function () {
       await ethers.provider.send("evm_mine", [nextBlocksTimestamp]);
 
       const withdrawTx = await projectFundRaising.ownerWithdrawFunds();
-      const collectedAmount = await projectFundRaising.getCollectedAmount();
+      const collectedAmount = await projectFundRaising.collectedAmount();
 
       const receipt: ContractReceipt = await withdrawTx.wait();
       const gasUsed = receipt.gasUsed.mul(receipt.effectiveGasPrice);
@@ -297,44 +297,40 @@ describe("ProjectFundRaising", async function () {
 
     describe("Getters", async function () {
       it("Get id of project", async function () {
-        expect(await projectFundRaising.getId()).to.be.equal(projectID);
+        expect(await projectFundRaising.id()).to.be.equal(projectID);
       });
       it("Get title of project", async function () {
-        expect(await projectFundRaising.getTitle()).to.be.equal(title);
+        expect(await projectFundRaising.getDecodedTitle()).to.be.equal(title);
       });
       it("Get expiration of project", async function () {
-        expect(await projectFundRaising.getExpiration()).to.be.equal(
-          expirationDate
-        );
+        expect(await projectFundRaising.expires()).to.be.equal(expirationDate);
       });
       it("Get owner of project", async function () {
-        expect(await projectFundRaising.getOwnerOfProject()).to.be.equal(
+        expect(await projectFundRaising.projectOwner()).to.be.equal(
           deployer.address
         );
       });
       it("Get collected amount of project", async function () {
-        expect(await projectFundRaising.getCollectedAmount()).to.be.equal(
+        expect(await projectFundRaising.collectedAmount()).to.be.equal(
           ethers.utils.parseEther("0")
         );
       });
       it("Get ammount to back of project", async function () {
-        expect(await projectFundRaising.getAmountToColect()).to.be.equal(
-          backAmount
-        );
+        expect(await projectFundRaising.backAmount()).to.be.equal(backAmount);
       });
       it("Get address of project's erc20", async function () {
-        expect(await projectFundRaising.getERC20Address()).to.be.equal(
+        expect(await projectFundRaising.erc20token()).to.be.equal(
           erc20.address
         );
       });
       it("Get information about whether project is finished or not", async function () {
-        expect(await projectFundRaising.isFinished()).to.be.false;
+        expect(await projectFundRaising.finished()).to.be.false;
         const backValue = ethers.utils.parseEther("10");
 
         await projectFundRaising
           .connect(addr1)
           .backProject({ value: backValue });
-        expect(await projectFundRaising.isFinished()).to.be.true;
+        expect(await projectFundRaising.finished()).to.be.true;
       });
     });
   });

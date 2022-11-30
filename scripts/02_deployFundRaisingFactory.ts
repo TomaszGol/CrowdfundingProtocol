@@ -1,9 +1,9 @@
 import { ethers } from "hardhat";
-import { deployContract, getDeployConfig } from "../utils";
+import { deployContract, getContractAddresses } from "../utils";
 
 export async function deployContractControlList() {
   const [deployer] = await ethers.getSigners();
-  //   const config = getDeployConfig();
+
   const admin = deployer.address;
   const network = (await deployer.provider?.getNetwork())?.name;
   console.log(deployer.address);
@@ -14,7 +14,9 @@ export async function deployContractControlList() {
   if (!admin) {
     throw new Error("Admin not defined");
   }
-  const cclAddress = "0x76248b372d36e870bF33A932C8c7B57AE390e8B0";
+  const address = getContractAddresses(network as string);
+  const cclAddress = address.ContractControlList;
+
   console.log("Deploying FundRaisingFactory...");
   const FundRaisingFactory = await ethers.getContractFactory(
     "FundRaisingFactory"

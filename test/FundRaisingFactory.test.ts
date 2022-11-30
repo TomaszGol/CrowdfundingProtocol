@@ -49,28 +49,6 @@ describe("FundRaisingFactory", async function () {
         .withArgs(defaultFee, newFee);
       expect(await fundRaisingFactory.feeSetting()).to.be.equal(newFee);
     });
-    // it("Owner can change default owner", async function () {
-    //   expect(await fundRaisingFactory.defaultOwner()).to.be.equal(
-    //     deployer.address
-    //   );
-
-    //   const tx = await fundRaisingFactory.changeOwner(addr1.address);
-
-    //   await expect(tx)
-    //     .to.be.emit(fundRaisingFactory, "OwnerChanged")
-    //     .withArgs(deployer.address, addr1.address);
-    //   await expect(tx)
-    //     .to.be.emit(fundRaisingFactory, "OwnershipTransferred")
-    //     .withArgs(deployer.address, addr1.address);
-    //   expect(await fundRaisingFactory.defaultOwner()).to.be.equal(
-    //     addr1.address
-    //   );
-    //   // DUPA
-    //   expect(tx).to.be.emit(ccl, "").withArgs();
-    //   expect(tx).to.be.emit(ccl, "").withArgs();
-    //   // EMIT ROLE REVOKE
-    //   // EMIT ROLE GRANTED
-    // });
     //createProject
     it("Successfuly created new project", async function () {
       const projectId = 1;
@@ -401,12 +379,43 @@ describe("FundRaisingFactory", async function () {
       ).to.be.revertedWith("FundRaisingFactory: Caller is not the owner");
     });
 
-    // it("Cannot change owner when caller is not the owner", async function () {
-    //   await expect(
-    //     fundRaisingFactory.connect(addr1).changeOwner(addr1.address)
-    //   ).to.be.revertedWith("FundRaisingFactory: Caller is not the owner");
-    // });
     //createProject
+    it("Cannot create new project when value to rise is too low", async function () {
+      const blockNumber = ethers.provider.getBlockNumber();
+      const expirationDate =
+        (await ethers.provider.getBlock(blockNumber)).timestamp + 1000;
+      const amountToRaise = await ethers.utils.parseEther("0.9");
+      await expect(
+        fundRaisingFactory.createProject(
+          title,
+          amountToRaise,
+          expirationDate,
+          tokenName,
+          tokenSymbol,
+          { value: ethers.utils.parseEther("0.2") }
+        )
+      ).to.be.revertedWith(
+        "FundRaisingFactory: Ammount to raise should be higher than 1 ETH"
+      );
+    });
+    it("Cannot create new project when expiration date is lower than current timestamp", async function () {
+      const blockNumber = ethers.provider.getBlockNumber();
+      const expirationDate =
+        (await ethers.provider.getBlock(blockNumber)).timestamp - 1000;
+
+      await expect(
+        fundRaisingFactory.createProject(
+          title,
+          backAmount,
+          expirationDate,
+          tokenName,
+          tokenSymbol,
+          { value: ethers.utils.parseEther("0.2") }
+        )
+      ).to.be.revertedWith(
+        "FundRaisingFactory: Expiratrion should not be lower than current timestamp"
+      );
+    });
     it("Cannot create new project when expiration date is longer than month from now", async function () {
       const monthFromNow = 2629743;
 

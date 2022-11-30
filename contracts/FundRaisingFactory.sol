@@ -11,7 +11,7 @@ import "@openzeppelin/contracts/utils/Counters.sol";
 contract FundRaisingFactory is IFundRaisingFactory {
     using Counters for Counters.Counter;
 
-    ContractControlList internal ccl;
+    ContractControlList public ccl;
 
     uint256 public feeSetting;
     address public defaultOwner;
@@ -52,20 +52,6 @@ contract FundRaisingFactory is IFundRaisingFactory {
         emit FeeChanged(currentFee, feeSetting);
     }
 
-    // function changeOwner(address newOwner) external onlyAdminRole(msg.sender) {
-    //     require(
-    //         newOwner != address(0),
-    //         "FundRaisingFactory: Cannot transfer ownership to addres 0"
-    //     );
-    //     address currentOwner = defaultOwner;
-    //     defaultOwner = newOwner;
-
-    //     ccl.grantRole(ccl.FUND_RAISING_ADMIN(), newOwner);
-    //     ccl.revokeRole(ccl.FUND_RAISING_ADMIN(), currentOwner);
-
-    //     emit OwnerChanged(currentOwner, defaultOwner);
-    // }
-
     function createProject(
         string calldata _title,
         uint256 _backAmount,
@@ -74,8 +60,16 @@ contract FundRaisingFactory is IFundRaisingFactory {
         string calldata _tokenSymbol
     ) external payable override {
         require(
+            _expires > block.timestamp,
+            "FundRaisingFactory: Expiratrion should not be lower than current timestamp"
+        );
+        require(
             _expires <= block.timestamp + 2629743,
             "FundRaisingFactory: Expiration date cannot be longer than a one month"
+        );
+        require(
+            _backAmount >= 1 ether,
+            "FundRaisingFactory: Ammount to raise should be higher than 1 ETH"
         );
         uint256 projectId = _tokenIdTracker.current();
 
@@ -119,20 +113,16 @@ contract FundRaisingFactory is IFundRaisingFactory {
         }
     }
 
-    function cancelProject(uint256 projectId)
-        external
-        override
-        onlyAdminOrModeratorRole(msg.sender)
-    {
+    function cancelProject(
+        uint256 projectId
+    ) external override onlyAdminOrModeratorRole(msg.sender) {
         ProjectFundRaising project = projectsCreated[projectId];
         project.cancelProject();
     }
 
-    function verifyProject(uint256 projectId)
-        external
-        override
-        onlyAdminOrModeratorRole(msg.sender)
-    {
+    function verifyProject(
+        uint256 projectId
+    ) external override onlyAdminOrModeratorRole(msg.sender) {
         ProjectFundRaising project = projectsCreated[projectId];
         project.verifyProject();
     }

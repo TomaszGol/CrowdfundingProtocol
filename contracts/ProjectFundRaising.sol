@@ -13,16 +13,16 @@ contract ProjectFundRaising is IProjectFundRaising {
 
     EnumerableMap.AddressToUintMap internal backers;
 
-    ERC20Token internal erc20token;
+    ERC20Token public erc20token;
 
-    uint256 internal id;
+    uint256 public id;
     bytes internal hashedTitle;
-    address internal projectOwner;
-    address internal factoryAddress;
-    uint256 internal expires;
-    uint256 internal backAmount;
-    uint256 internal collectedAmount;
-    bool internal finished;
+    address public projectOwner;
+    address public factoryAddress;
+    uint256 public expires;
+    uint256 public backAmount;
+    uint256 public collectedAmount;
+    bool public finished;
     bool public withdrawedByOwner;
     projectStatus public status;
 
@@ -254,35 +254,7 @@ contract ProjectFundRaising is IProjectFundRaising {
         emit ProjectVeryfied(id);
     }
 
-    function getId() external view returns (uint256) {
-        return id;
-    }
-
-    function getTitle() external view returns (string memory) {
+    function getDecodedTitle() external view returns (string memory) {
         return abi.decode(hashedTitle, (string));
-    }
-
-    function getExpiration() external view returns (uint256) {
-        return expires;
-    }
-
-    function getOwnerOfProject() external view returns (address) {
-        return projectOwner;
-    }
-
-    function getCollectedAmount() external view returns (uint256) {
-        return collectedAmount;
-    }
-
-    function getAmountToColect() external view returns (uint256) {
-        return backAmount;
-    }
-
-    function isFinished() external view returns (bool) {
-        return finished;
-    }
-
-    function getERC20Address() external view returns (address) {
-        return address(erc20token);
     }
 }

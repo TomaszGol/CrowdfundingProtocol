@@ -1,9 +1,9 @@
 import { ethers } from "hardhat";
-import { deployContract, getDeployConfig } from "../utils";
+import { deployContract } from "../utils";
 
 export async function deployContractControlList() {
   const [deployer] = await ethers.getSigners();
-  //   const config = getDeployConfig();
+
   const admin = deployer.address;
   const network = (await deployer.provider?.getNetwork())?.name;
   console.log(deployer.address);
