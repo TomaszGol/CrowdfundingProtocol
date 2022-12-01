@@ -3,29 +3,25 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import "./libraries/EnumerableMapBytes32ToAddress.sol";
 import "./interfaces/IFundRaisingFactory.sol";
 import "./ProjectFundRaising.sol";
 import "./ContractControlList.sol";
-import "@openzeppelin/contracts/utils/Counters.sol";
 
 contract FundRaisingFactory is IFundRaisingFactory {
-    using Counters for Counters.Counter;
+    using EnumerableMapBytes32ToAddress for EnumerableMapBytes32ToAddress.Bytes32ToAddress;
 
     ContractControlList public ccl;
 
     uint256 public feeSetting;
     address public defaultOwner;
 
-    mapping(uint256 => ProjectFundRaising) public projectsCreated;
-
-    Counters.Counter private _tokenIdTracker;
+    EnumerableMapBytes32ToAddress.Bytes32ToAddress internal projects;
 
     constructor(ContractControlList _ccl, uint256 _fee) {
         ccl = _ccl;
         feeSetting = _fee;
         defaultOwner = msg.sender;
-
-        _tokenIdTracker.increment();
     }
 
     modifier onlyAdminRole(address addr) {
@@ -59,23 +55,23 @@ contract FundRaisingFactory is IFundRaisingFactory {
         string calldata _tokenName,
         string calldata _tokenSymbol
     ) external payable override {
+        bytes32 hashedTitle = keccak256(abi.encode(_title));
         require(
-            _expires > block.timestamp,
-            "FundRaisingFactory: Expiratrion should not be lower than current timestamp"
+            !projects.contains(hashedTitle),
+            "FundRaisingFactory: Project with this title alreadt exists"
         );
         require(
-            _expires <= block.timestamp + 2629743,
-            "FundRaisingFactory: Expiration date cannot be longer than a one month"
+            _expires > block.timestamp && _expires <= block.timestamp + 2629743,
+            "FundRaisingFactory: Expiratrion date is not correct"
         );
         require(
             _backAmount >= 1 ether,
             "FundRaisingFactory: Ammount to raise should be higher than 1 ETH"
         );
-        uint256 projectId = _tokenIdTracker.current();
 
         ProjectFundRaising newProject = new ProjectFundRaising(
             msg.sender,
-            projectId,
+            hashedTitle,
             _title,
             _backAmount,
             _expires,
@@ -93,11 +89,10 @@ contract FundRaisingFactory is IFundRaisingFactory {
         );
         payable(defaultOwner).transfer(msg.value);
 
-        projectsCreated[projectId] = newProject;
-        _tokenIdTracker.increment();
+        projects.set(hashedTitle, address(newProject));
 
         emit ProjectCreated(
-            projectId,
+            hashedTitle,
             address(newProject),
             _title,
             _expires,
@@ -105,25 +100,29 @@ contract FundRaisingFactory is IFundRaisingFactory {
         );
     }
 
-    function isProjectExists(uint256 projectId) external view returns (bool) {
-        if (address(projectsCreated[projectId]) != address(0)) {
-            return true;
-        } else {
-            return false;
-        }
+    function isProjectExists(bytes32 hashedTitle) external view returns (bool) {
+        return projects.contains(hashedTitle);
+    }
+
+    function getProject(bytes32 hashedTitle) public view returns (address) {
+        return projects.get(hashedTitle);
     }
 
     function cancelProject(
-        uint256 projectId
+        bytes32 hashedTitle
     ) external override onlyAdminOrModeratorRole(msg.sender) {
-        ProjectFundRaising project = projectsCreated[projectId];
+        ProjectFundRaising project = ProjectFundRaising(
+            getProject(hashedTitle)
+        );
         project.cancelProject();
     }
 
     function verifyProject(
-        uint256 projectId
+        bytes32 hashedTitle
     ) external override onlyAdminOrModeratorRole(msg.sender) {
-        ProjectFundRaising project = projectsCreated[projectId];
+        ProjectFundRaising project = ProjectFundRaising(
+            getProject(hashedTitle)
+        );
         project.verifyProject();
     }
 }

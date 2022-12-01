@@ -15,7 +15,7 @@ contract ProjectFundRaising is IProjectFundRaising {
 
     ERC20Token public erc20token;
 
-    uint256 public id;
+    bytes32 public id;
     bytes internal hashedTitle;
     address public projectOwner;
     address public factoryAddress;
@@ -28,7 +28,7 @@ contract ProjectFundRaising is IProjectFundRaising {
 
     constructor(
         address _owner,
-        uint256 _id,
+        bytes32 _id,
         string memory _title,
         uint256 _backAmount,
         uint256 _expires,

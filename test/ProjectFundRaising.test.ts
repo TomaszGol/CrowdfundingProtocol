@@ -10,8 +10,10 @@ describe("ProjectFundRaising", async function () {
   let addr1: SignerWithAddress;
   let addr2: SignerWithAddress;
 
-  const projectID = 1;
   const title = "Test";
+  const projectID = ethers.utils.keccak256(
+    ethers.utils.defaultAbiCoder.encode(["string"], [title])
+  );
   const backAmount = ethers.utils.parseEther("10");
   const tokenName = "Testtoken";
   const tokenSymbol = "TEST";

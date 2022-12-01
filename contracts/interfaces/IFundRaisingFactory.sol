@@ -6,7 +6,7 @@ interface IFundRaisingFactory {
     event FeeChanged(uint256 oldFee, uint256 newFee);
     event OwnerChanged(address oldOwner, address newOwner);
     event ProjectCreated(
-        uint256 indexed id,
+        bytes32 indexed id,
         address indexed projectAddress,
         string title,
         uint256 expires,
@@ -21,7 +21,7 @@ interface IFundRaisingFactory {
         string calldata tokenSymbol
     ) external payable;
 
-    function cancelProject(uint256 projectId) external;
+    function cancelProject(bytes32 projectId) external;
 
-    function verifyProject(uint256 projectId) external;
+    function verifyProject(bytes32 projectId) external;
 }

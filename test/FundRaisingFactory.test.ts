@@ -51,7 +51,10 @@ describe("FundRaisingFactory", async function () {
     });
     //createProject
     it("Successfuly created new project", async function () {
-      const projectId = 1;
+      const projectId = ethers.utils.keccak256(
+        ethers.utils.defaultAbiCoder.encode(["string"], [title])
+      );
+
       const blockNumber = ethers.provider.getBlockNumber();
       const expirationDate =
         (await ethers.provider.getBlock(blockNumber)).timestamp + 1000;
@@ -72,7 +75,8 @@ describe("FundRaisingFactory", async function () {
       const createProjectEvent = events.find(
         (el: Event) => el.event === "ProjectCreated"
       );
-      const rentId = createProjectEvent.args.id.toNumber();
+      const rentId = createProjectEvent.args.id;
+
       const projectAddress = createProjectEvent.args.projectAddress;
 
       await expect(createProj)
@@ -81,7 +85,7 @@ describe("FundRaisingFactory", async function () {
 
       expect(await fundRaisingFactory.isProjectExists(projectId)).to.be.true;
 
-      expect(await fundRaisingFactory.projectsCreated(rentId)).to.be.equal(
+      expect(await fundRaisingFactory.getProject(rentId)).to.be.equal(
         projectAddress
       );
     });
@@ -123,10 +127,12 @@ describe("FundRaisingFactory", async function () {
       const createProjectEvent = events.find(
         (el: Event) => el.event === "ProjectCreated"
       );
-      const rentId = createProjectEvent.args.id.toNumber();
+      const rentId = createProjectEvent.args.id;
       const projectAddress = createProjectEvent.args.projectAddress;
 
-      const projectId = 2;
+      const projectId = ethers.utils.keccak256(
+        ethers.utils.defaultAbiCoder.encode(["string"], [secondTitle])
+      );
 
       await expect(createProj)
         .to.be.emit(fundRaisingFactory, "ProjectCreated")
@@ -140,7 +146,7 @@ describe("FundRaisingFactory", async function () {
 
       expect(await fundRaisingFactory.isProjectExists(projectId)).to.be.true;
 
-      expect(await fundRaisingFactory.projectsCreated(projectId)).to.be.equal(
+      expect(await fundRaisingFactory.getProject(rentId)).to.be.equal(
         projectAddress
       );
     });
@@ -159,12 +165,16 @@ describe("FundRaisingFactory", async function () {
         { value: ethers.utils.parseEther("0.5") }
       );
 
-      const projectId = 1;
+      const projectId = ethers.utils.keccak256(
+        ethers.utils.defaultAbiCoder.encode(["string"], [title])
+      );
 
       expect(await fundRaisingFactory.isProjectExists(projectId)).to.be.true;
     });
     it("Return false when project does not exist", async function () {
-      const notExistID = 5;
+      const notExistID = ethers.utils.keccak256(
+        ethers.utils.defaultAbiCoder.encode(["string"], ["Hello"])
+      );
       expect(await fundRaisingFactory.isProjectExists(notExistID)).to.be.false;
     });
     it("Return created project", async function () {
@@ -188,10 +198,10 @@ describe("FundRaisingFactory", async function () {
       const createProjectEvent = events.find(
         (el: Event) => el.event === "ProjectCreated"
       );
-      const rentId = createProjectEvent.args.id.toNumber();
+      const rentId = createProjectEvent.args.id;
       const projectAddress = createProjectEvent.args.projectAddress;
 
-      expect(await fundRaisingFactory.projectsCreated(rentId)).to.be.equal(
+      expect(await fundRaisingFactory.getProject(rentId)).to.be.equal(
         projectAddress
       );
     });
@@ -217,7 +227,7 @@ describe("FundRaisingFactory", async function () {
       const createProjectEvent = events.find(
         (el: Event) => el.event === "ProjectCreated"
       );
-      const rentId = createProjectEvent.args.id.toNumber();
+      const rentId = createProjectEvent.args.id;
 
       const cancelTx = await fundRaisingFactory.cancelProject(rentId);
 
@@ -225,7 +235,7 @@ describe("FundRaisingFactory", async function () {
         "ProjectFundRaising"
       );
 
-      const projectAddress = await fundRaisingFactory.projectsCreated(rentId);
+      const projectAddress = await fundRaisingFactory.getProject(rentId);
 
       const project = await ProjectFundRaisingFactory.attach(projectAddress);
 
@@ -257,7 +267,7 @@ describe("FundRaisingFactory", async function () {
       const createProjectEvent = events.find(
         (el: Event) => el.event === "ProjectCreated"
       );
-      const rentId = createProjectEvent.args.id.toNumber();
+      const rentId = createProjectEvent.args.id;
 
       const cancelTx = await fundRaisingFactory
         .connect(addr2)
@@ -267,7 +277,7 @@ describe("FundRaisingFactory", async function () {
         "ProjectFundRaising"
       );
 
-      const projectAddress = await fundRaisingFactory.projectsCreated(rentId);
+      const projectAddress = await fundRaisingFactory.getProject(rentId);
 
       const project = await ProjectFundRaisingFactory.attach(projectAddress);
 
@@ -298,7 +308,7 @@ describe("FundRaisingFactory", async function () {
       const createProjectEvent = events.find(
         (el: Event) => el.event === "ProjectCreated"
       );
-      const rentId = createProjectEvent.args.id.toNumber();
+      const rentId = createProjectEvent.args.id;
 
       const cancelTx = await fundRaisingFactory.verifyProject(rentId);
 
@@ -306,7 +316,7 @@ describe("FundRaisingFactory", async function () {
         "ProjectFundRaising"
       );
 
-      const projectAddress = await fundRaisingFactory.projectsCreated(rentId);
+      const projectAddress = await fundRaisingFactory.getProject(rentId);
 
       const project = await ProjectFundRaisingFactory.attach(projectAddress);
 
@@ -338,7 +348,7 @@ describe("FundRaisingFactory", async function () {
       const createProjectEvent = events.find(
         (el: Event) => el.event === "ProjectCreated"
       );
-      const rentId = createProjectEvent.args.id.toNumber();
+      const rentId = createProjectEvent.args.id;
 
       const cancelTx = await fundRaisingFactory
         .connect(addr2)
@@ -348,7 +358,7 @@ describe("FundRaisingFactory", async function () {
         "ProjectFundRaising"
       );
 
-      const projectAddress = await fundRaisingFactory.projectsCreated(rentId);
+      const projectAddress = await fundRaisingFactory.getProject(rentId);
 
       const project = await ProjectFundRaisingFactory.attach(projectAddress);
 
@@ -398,6 +408,32 @@ describe("FundRaisingFactory", async function () {
         "FundRaisingFactory: Ammount to raise should be higher than 1 ETH"
       );
     });
+    it("Cannot create second project with same name already exists", async function () {
+      const blockNumber = ethers.provider.getBlockNumber();
+      const expirationDate =
+        (await ethers.provider.getBlock(blockNumber)).timestamp + 1000;
+      const amountToRaise = await ethers.utils.parseEther("10");
+      await fundRaisingFactory.createProject(
+        title,
+        amountToRaise,
+        expirationDate,
+        tokenName,
+        tokenSymbol,
+        { value: ethers.utils.parseEther("0.5") }
+      );
+      await expect(
+        fundRaisingFactory.createProject(
+          title,
+          amountToRaise,
+          expirationDate,
+          tokenName,
+          tokenSymbol,
+          { value: ethers.utils.parseEther("0.5") }
+        )
+      ).to.be.revertedWith(
+        "FundRaisingFactory: Project with this title alreadt exists"
+      );
+    });
     it("Cannot create new project when expiration date is lower than current timestamp", async function () {
       const blockNumber = ethers.provider.getBlockNumber();
       const expirationDate =
@@ -413,7 +449,7 @@ describe("FundRaisingFactory", async function () {
           { value: ethers.utils.parseEther("0.2") }
         )
       ).to.be.revertedWith(
-        "FundRaisingFactory: Expiratrion should not be lower than current timestamp"
+        "FundRaisingFactory: Expiratrion date is not correct"
       );
     });
     it("Cannot create new project when expiration date is longer than month from now", async function () {
@@ -435,7 +471,7 @@ describe("FundRaisingFactory", async function () {
           { value: ethers.utils.parseEther("0.2") }
         )
       ).to.be.revertedWith(
-        "FundRaisingFactory: Expiration date cannot be longer than a one month"
+        "FundRaisingFactory: Expiratrion date is not correct"
       );
     });
     it("Cannot create new project when message value not match fee", async function () {
@@ -478,7 +514,7 @@ describe("FundRaisingFactory", async function () {
       const createProjectEvent = events.find(
         (el: Event) => el.event === "ProjectCreated"
       );
-      const rentId = createProjectEvent.args.id.toNumber();
+      const rentId = createProjectEvent.args.id;
 
       await expect(
         fundRaisingFactory.connect(addr2).cancelProject(rentId)
@@ -508,7 +544,7 @@ describe("FundRaisingFactory", async function () {
       const createProjectEvent = events.find(
         (el: Event) => el.event === "ProjectCreated"
       );
-      const rentId = createProjectEvent.args.id.toNumber();
+      const rentId = createProjectEvent.args.id;
 
       await expect(
         fundRaisingFactory.connect(addr2).verifyProject(rentId)
