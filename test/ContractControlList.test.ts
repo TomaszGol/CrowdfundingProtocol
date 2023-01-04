@@ -62,7 +62,7 @@ describe("ContractControlList", async function () {
     it("Admin should revoke moderator role", async function () {
       const role = await ccl.FUND_RAISING_MODERATOR();
       await ccl.giveModeratorRole(addr.address);
-      const tx = ccl.giveModeratorRole(addr.address);
+      const tx = ccl.revokeModeratorRole(addr.address);
       expect(tx)
         .to.be.emit(ccl, "RoleRevoked")
         .withArgs(role, addr.address, signer.address);
