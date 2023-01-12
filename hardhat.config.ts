@@ -2,6 +2,7 @@ import "@nomicfoundation/hardhat-toolbox";
 import * as dotenv from "dotenv";
 import "hardhat-contract-sizer";
 import { HardhatUserConfig } from "hardhat/config";
+import "solidity-coverage";
 
 dotenv.config();
 
