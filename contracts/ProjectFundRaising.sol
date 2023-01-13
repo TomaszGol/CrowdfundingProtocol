@@ -185,16 +185,14 @@ contract ProjectFundRaising is IProjectFundRaising {
             backValue = msg.value;
         }
 
-        backers.set(msg.sender, backValue);
+        bool result = backers.set(msg.sender, backValue);
 
         if (collectedAmount >= backAmount) {
             finished = true;
         }
-
+        emit ProjectBacked(msg.sender, msg.value);
         //Transfer tokens to backer
         erc20token.mint(msg.sender, msg.value);
-
-        emit ProjectBacked(msg.sender, msg.value);
     }
 
     //isProjectOwner(msg.sender)
@@ -226,13 +224,12 @@ contract ProjectFundRaising is IProjectFundRaising {
         (bool findBacker, uint256 withdrawFund) = backers.tryGet(backer);
 
         collectedAmount -= withdrawFund;
-        backers.set(backer, 0);
+        bool result = backers.set(backer, 0);
 
         //Burn tokens from backers
+        emit FundsWithdrawedByBacker(backer, withdrawFund);
         erc20token.burnFrom(backer, withdrawFund);
         payable(backer).transfer(withdrawFund);
-
-        emit FundsWithdrawedByBacker(backer, withdrawFund);
     }
 
     function cancelProject() external onlyFromFactory(msg.sender) {
