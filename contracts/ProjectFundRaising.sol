@@ -54,36 +54,38 @@ contract ProjectFundRaising is IProjectFundRaising {
 
     //Propably Useless
     modifier isProjectOwner(address sender) {
-        _isProjectOwner(sender);
-        _;
-    }
-
-    function _isProjectOwner(address sender) internal view {
         require(
             sender == projectOwner,
             "ProjectFundRaising: Caller is not the owner"
         );
-    }
-
-    modifier projectNotFinished() {
-        _projectNotFinished();
         _;
     }
 
-    function _projectNotFinished() internal view {
+    // function _isProjectOwner(address sender) internal view {
+    //     require(
+    //         sender == projectOwner,
+    //         "ProjectFundRaising: Caller is not the owner"
+    //     );
+    // }
+
+    modifier projectNotFinished() {
         require(!finished, "ProjectFundRaising: Project is already finished");
         require(
             expires >= block.timestamp,
             "ProjectFundRaising: Project already expired"
         );
-    }
-
-    modifier fundsRaised() {
-        _fundsRaised();
         _;
     }
 
-    function _fundsRaised() internal view {
+    // function _projectNotFinished() internal view {
+    //     require(!finished, "ProjectFundRaising: Project is already finished");
+    //     require(
+    //         expires >= block.timestamp,
+    //         "ProjectFundRaising: Project already expired"
+    //     );
+    // }
+
+    modifier fundsRaised() {
         require(
             collectedAmount >= backAmount,
             "ProjectFundRaising: Funds not raised"
@@ -92,55 +94,79 @@ contract ProjectFundRaising is IProjectFundRaising {
             finished,
             "ProjectFundRaising: Project is not already finished"
         );
-    }
-
-    modifier fundsNotRaised() {
-        _fundsNotRaised();
         _;
     }
 
-    function _fundsNotRaised() internal view {
+    // function _fundsRaised() internal view {
+    //     require(
+    //         collectedAmount >= backAmount,
+    //         "ProjectFundRaising: Funds not raised"
+    //     );
+    //     require(
+    //         finished,
+    //         "ProjectFundRaising: Project is not already finished"
+    //     );
+    // }
+
+    modifier fundsNotRaised() {
         require(
             backAmount >= collectedAmount,
             "ProjectFundRaising: Funds raised"
         );
-    }
-
-    modifier projectExpired() {
-        _projectExpired();
         _;
     }
 
-    function _projectExpired() internal view {
+    // function _fundsNotRaised() internal view {
+    //     require(
+    //         backAmount >= collectedAmount,
+    //         "ProjectFundRaising: Funds raised"
+    //     );
+    // }
+
+    modifier projectExpired() {
         require(
             block.timestamp > expires,
             "ProjectFundRaising: Project not expired yet"
         );
-    }
-
-    modifier userBackedProject(address caller) {
-        _userBackedProject(caller);
         _;
     }
 
-    function _userBackedProject(address caller) internal view {
+    // function _projectExpired() internal view {
+    //     require(
+    //         block.timestamp > expires,
+    //         "ProjectFundRaising: Project not expired yet"
+    //     );
+    // }
+
+    modifier userBackedProject(address caller) {
         require(
             backers.contains(caller),
             "ProjectFundRaising: User did not back project"
         );
-    }
-
-    modifier notWithdrawed() {
-        _notWithdrawed();
         _;
     }
 
-    function _notWithdrawed() internal view {
+    // function _userBackedProject(address caller) internal view {
+    //     require(
+    //         backers.contains(caller),
+    //         "ProjectFundRaising: User did not back project"
+    //     );
+    // }
+
+    modifier notWithdrawed() {
         require(
             !withdrawedByOwner,
             "ProjectFundRaising: Funds already withdrawed"
         );
+        _;
     }
+
+    // function _notWithdrawed() internal view {
+    //     require(
+    //         !withdrawedByOwner,
+    //         "ProjectFundRaising: Funds already withdrawed"
+    //     );
+    // }
 
     modifier onlyFromFactory(address caller) {
         _onlyFromFactory(caller);
@@ -185,16 +211,14 @@ contract ProjectFundRaising is IProjectFundRaising {
             backValue = msg.value;
         }
 
-        backers.set(msg.sender, backValue);
+        bool result = backers.set(msg.sender, backValue);
 
         if (collectedAmount >= backAmount) {
             finished = true;
         }
-
+        emit ProjectBacked(msg.sender, msg.value);
         //Transfer tokens to backer
         erc20token.mint(msg.sender, msg.value);
-
-        emit ProjectBacked(msg.sender, msg.value);
     }
 
     //isProjectOwner(msg.sender)
@@ -226,13 +250,12 @@ contract ProjectFundRaising is IProjectFundRaising {
         (bool findBacker, uint256 withdrawFund) = backers.tryGet(backer);
 
         collectedAmount -= withdrawFund;
-        backers.set(backer, 0);
+        bool result = backers.set(backer, 0);
 
         //Burn tokens from backers
+        emit FundsWithdrawedByBacker(backer, withdrawFund);
         erc20token.burnFrom(backer, withdrawFund);
         payable(backer).transfer(withdrawFund);
-
-        emit FundsWithdrawedByBacker(backer, withdrawFund);
     }
 
     function cancelProject() external onlyFromFactory(msg.sender) {

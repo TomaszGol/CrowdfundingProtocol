@@ -1,9 +1,9 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
-import { Contract, ContractReceipt } from "ethers";
+import { Contract } from "ethers";
 import { ethers } from "hardhat";
 
-describe("ProjectFundRaising", async function () {
+describe("ERC20Token", async function () {
   let erc20: Contract;
   let deployer: SignerWithAddress;
   let addr1: SignerWithAddress;

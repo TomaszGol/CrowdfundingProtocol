@@ -89,7 +89,7 @@ contract FundRaisingFactory is IFundRaisingFactory {
         );
         payable(defaultOwner).transfer(msg.value);
 
-        projects.set(hashedTitle, address(newProject));
+        bool result = projects.set(hashedTitle, address(newProject));
 
         emit ProjectCreated(
             hashedTitle,
