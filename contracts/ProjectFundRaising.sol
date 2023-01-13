@@ -61,13 +61,6 @@ contract ProjectFundRaising is IProjectFundRaising {
         _;
     }
 
-    // function _isProjectOwner(address sender) internal view {
-    //     require(
-    //         sender == projectOwner,
-    //         "ProjectFundRaising: Caller is not the owner"
-    //     );
-    // }
-
     modifier projectNotFinished() {
         require(!finished, "ProjectFundRaising: Project is already finished");
         require(
@@ -76,14 +69,6 @@ contract ProjectFundRaising is IProjectFundRaising {
         );
         _;
     }
-
-    // function _projectNotFinished() internal view {
-    //     require(!finished, "ProjectFundRaising: Project is already finished");
-    //     require(
-    //         expires >= block.timestamp,
-    //         "ProjectFundRaising: Project already expired"
-    //     );
-    // }
 
     modifier fundsRaised() {
         require(
@@ -97,17 +82,6 @@ contract ProjectFundRaising is IProjectFundRaising {
         _;
     }
 
-    // function _fundsRaised() internal view {
-    //     require(
-    //         collectedAmount >= backAmount,
-    //         "ProjectFundRaising: Funds not raised"
-    //     );
-    //     require(
-    //         finished,
-    //         "ProjectFundRaising: Project is not already finished"
-    //     );
-    // }
-
     modifier fundsNotRaised() {
         require(
             backAmount >= collectedAmount,
@@ -115,13 +89,6 @@ contract ProjectFundRaising is IProjectFundRaising {
         );
         _;
     }
-
-    // function _fundsNotRaised() internal view {
-    //     require(
-    //         backAmount >= collectedAmount,
-    //         "ProjectFundRaising: Funds raised"
-    //     );
-    // }
 
     modifier projectExpired() {
         require(
@@ -131,13 +98,6 @@ contract ProjectFundRaising is IProjectFundRaising {
         _;
     }
 
-    // function _projectExpired() internal view {
-    //     require(
-    //         block.timestamp > expires,
-    //         "ProjectFundRaising: Project not expired yet"
-    //     );
-    // }
-
     modifier userBackedProject(address caller) {
         require(
             backers.contains(caller),
@@ -146,13 +106,6 @@ contract ProjectFundRaising is IProjectFundRaising {
         _;
     }
 
-    // function _userBackedProject(address caller) internal view {
-    //     require(
-    //         backers.contains(caller),
-    //         "ProjectFundRaising: User did not back project"
-    //     );
-    // }
-
     modifier notWithdrawed() {
         require(
             !withdrawedByOwner,
@@ -160,13 +113,6 @@ contract ProjectFundRaising is IProjectFundRaising {
         );
         _;
     }
-
-    // function _notWithdrawed() internal view {
-    //     require(
-    //         !withdrawedByOwner,
-    //         "ProjectFundRaising: Funds already withdrawed"
-    //     );
-    // }
 
     modifier onlyFromFactory(address caller) {
         _onlyFromFactory(caller);
